@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AlgoDAO — On-Chain Governance | Algorand</title>
+<meta name="description" content="Decentralized autonomous organization governance on Algorand. Create proposals, cast votes, shape the protocol — all on-chain."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;600;700;800;900&family=Fira+Code:wght@400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#04080f; --bg2:#080f1c; --bg3:#0d1829; --bg4:#111f36;
+  --border:#112040; --border2:#1a3060;
+  --text:#dce8ff; --text2:#7a9ccc; --text3:#4a6a99; --text4:#2a4a70;
+  --gold:#f5c842; --blue:#3b82f6; --green:#22c55e; --red:#ef4444; --purple:#a855f7;
+  --mono:'Fira Code',monospace; --sans:'Lato',sans-serif; --display:'Cabinet Grotesk',sans-serif;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#04080f}::-webkit-scrollbar-thumb{background:#1a3060;border-radius:3px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px #f5c84215}50%{box-shadow:0 0 40px #f5c84230}}
+@keyframes dash{to{stroke-dashoffset:0}}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+input,select,textarea,button{font-family:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ── BACKGROUND ── */
+.bg-wrap{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-noise{position:absolute;inset:0;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.bg-grid{position:absolute;inset:0;background-image:linear-gradient(#112040 1px,transparent 1px),linear-gradient(90deg,#112040 1px,transparent 1px);background-size:64px 64px;opacity:.3}
+.bg-orb1{position:absolute;top:-30%;left:-15%;width:70vw;height:70vw;background:radial-gradient(ellipse,#f5c84206 0%,transparent 65%);border-radius:50%}
+.bg-orb2{position:absolute;bottom:-30%;right:-15%;width:60vw;height:60vw;background:radial-gradient(ellipse,#3b82f606 0%,transparent 65%);border-radius:50%}
+.bg-line{position:absolute;top:0;left:50%;width:1px;height:100%;background:linear-gradient(transparent,#f5c84208,transparent)}
+
+/* ── HEADER ── */
+header{position:sticky;top:0;z-index:200;border-bottom:1px solid var(--border);background:#04080fee;backdrop-filter:blur(24px)}
+.header-wrap{max-width:1320px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;gap:20px}
+.logo{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo-mark{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#f5c842,#e8a000);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 24px #f5c84230;animation:glow 3s ease infinite}
+.logo-text{font-family:var(--display);font-size:20px;font-weight:900;color:#f1f8ff;letter-spacing:-.5px}
+.logo-sub{font-size:10px;color:var(--text4);letter-spacing:.1em;text-transform:uppercase}
+nav{display:flex;gap:2px;flex:1;justify-content:center;flex-wrap:wrap}
+.nav-btn{padding:8px 18px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--text3);font-size:13px;cursor:pointer;transition:all .2s;font-family:var(--display);font-weight:600;letter-spacing:.01em}
+.nav-btn:hover{color:var(--text2);background:var(--bg3)}
+.nav-btn.active{background:var(--bg3);border-color:var(--border2);color:var(--gold)}
+.header-right{display:flex;gap:10px;align-items:center;flex-shrink:0}
+.appid-pill{padding:5px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--blue);font-family:var(--mono);white-space:nowrap}
+.appid-pill a{color:var(--blue)}
+.wallet-btn{padding:9px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--display);font-weight:600;transition:all .2s}
+.wallet-btn:hover{border-color:var(--gold);color:var(--gold)}
+.wallet-btn.connected{border-color:var(--green);color:var(--green)}
+
+/* ── MAIN ── */
+main{max-width:1320px;margin:0 auto;padding:36px 28px;position:relative;z-index:1}
+.tab{animation:fadeUp .28s ease}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:56px 28px 72px;max-width:800px;margin:0 auto}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:100px;font-size:12px;color:var(--gold);font-family:var(--mono);margin-bottom:28px}
+.hero-dot{width:7px;height:7px;background:var(--gold);border-radius:50%;animation:glow 2s infinite}
+h1.hero-title{font-family:var(--display);font-size:clamp(40px,6vw,72px);font-weight:900;line-height:1.0;color:#f1f8ff;margin-bottom:10px;letter-spacing:-2px}
+.hero-subtitle{font-family:var(--display);font-size:clamp(22px,3.5vw,40px);font-weight:700;color:var(--gold);margin-bottom:24px;letter-spacing:-1px}
+.hero-body{font-size:17px;color:var(--text3);line-height:1.75;max-width:560px;margin:0 auto 36px;font-weight:300}
+.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-gold{padding:13px 32px;background:linear-gradient(135deg,#f5c842,#e09000);border:none;border-radius:11px;color:#04080f;font-size:14px;font-weight:900;cursor:pointer;font-family:var(--display);letter-spacing:.02em;transition:all .2s;box-shadow:0 4px 24px #f5c84230}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 32px #f5c84240}
+.btn-gold:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-outline{padding:13px 32px;background:transparent;border:1px solid var(--border2);border-radius:11px;color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--display);transition:all .2s}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── STATS ── */
+.stats-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:48px}
+.stat-box{background:var(--bg2);padding:22px 16px;text-align:center}
+.stat-num{font-family:var(--display);font-size:28px;font-weight:900;margin-bottom:4px}
+.stat-lbl{font-size:11px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em}
+
+/* ── SECTION ── */
+.section-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.section-title{font-family:var(--display);font-size:22px;font-weight:800;color:#f1f8ff}
+.section-count{font-size:12px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:4px 12px;border-radius:100px}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:8px;margin-bottom:28px;flex-wrap:wrap}
+.filter-btn{padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text3);font-size:12px;cursor:pointer;font-family:var(--display);font-weight:600;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+.filter-btn:hover{border-color:var(--border2);color:var(--text2)}
+.filter-btn.active{border-color:var(--gold);color:var(--gold);background:#f5c84210}
+
+/* ── PROPOSAL CARDS ── */
+.proposals-grid{display:flex;flex-direction:column;gap:16px}
+.proposal-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .22s;cursor:pointer}
+.proposal-card:hover{border-color:var(--border2);box-shadow:0 8px 40px #00000050;transform:translateY(-2px)}
+.proposal-card.expanded{border-color:var(--gold)}
+.p-header{display:flex;align-items:flex-start;gap:16px;padding:22px 24px}
+.p-num{font-family:var(--mono);font-size:12px;color:var(--text4);white-space:nowrap;padding-top:2px}
+.p-content{flex:1;min-width:0}
+.p-title{font-family:var(--display);font-size:17px;font-weight:800;color:#f1f8ff;margin-bottom:6px;line-height:1.25}
+.p-desc{font-size:13px;color:var(--text3);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.p-meta{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.p-tag{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.05em;font-family:var(--display)}
+.tag-treasury{background:#f5c84218;color:var(--gold);border:1px solid #f5c84230}
+.tag-protocol{background:#3b82f618;color:var(--blue);border:1px solid #3b82f630}
+.tag-membership{background:#a855f718;color:var(--purple);border:1px solid #a855f730}
+.tag-general{background:#22c55e18;color:var(--green);border:1px solid #22c55e30}
+.status-pill{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.05em;font-family:var(--display)}
+.s-active{background:#22c55e18;color:var(--green);border:1px solid #22c55e30}
+.s-passed{background:#3b82f618;color:var(--blue);border:1px solid #3b82f630}
+.s-rejected{background:#ef444418;color:var(--red);border:1px solid #ef444430}
+.s-executed{background:#f5c84218;color:var(--gold);border:1px solid #f5c84230}
+.s-pending{background:#ffffff10;color:#94a3b8;border:1px solid #33445560}
+.p-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0}
+.time-left{font-size:12px;color:var(--text3);font-family:var(--mono);white-space:nowrap}
+
+/* ── VOTE BAR ── */
+.vote-bar-wrap{padding:0 24px 18px}
+.vote-bar{height:8px;border-radius:100px;background:var(--bg4);overflow:hidden;display:flex;margin-bottom:8px}
+.vb-for{background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .5s ease}
+.vb-against{background:linear-gradient(90deg,#ef4444,#dc2626);transition:width .5s ease}
+.vb-abstain{background:linear-gradient(90deg,#94a3b8,#64748b);transition:width .5s ease}
+.vote-nums{display:flex;justify-content:space-between;font-size:11px}
+.vn-for{color:var(--green)}
+.vn-against{color:var(--red)}
+.vn-abstain{color:#94a3b8}
+
+/* ── VOTE PANEL ── */
+.vote-panel{border-top:1px solid var(--border);padding:20px 24px;background:var(--bg3)}
+.vote-panel-title{font-family:var(--display);font-size:14px;font-weight:800;color:var(--text2);margin-bottom:14px;letter-spacing:.02em}
+.vote-choices{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.vote-btn{flex:1;min-width:100px;padding:12px 8px;border:2px solid;border-radius:10px;background:transparent;font-family:var(--display);font-weight:800;font-size:14px;cursor:pointer;transition:all .18s;letter-spacing:.03em}
+.vb-for-btn{border-color:#22c55e40;color:var(--green)}
+.vb-for-btn:hover,.vb-for-btn.selected{background:#22c55e20;border-color:var(--green);transform:translateY(-1px)}
+.vb-against-btn{border-color:#ef444440;color:var(--red)}
+.vb-against-btn:hover,.vb-against-btn.selected{background:#ef444420;border-color:var(--red);transform:translateY(-1px)}
+.vb-abstain-btn{border-color:#94a3b840;color:#94a3b8}
+.vb-abstain-btn:hover,.vb-abstain-btn.selected{background:#94a3b820;border-color:#94a3b8;transform:translateY(-1px)}
+.submit-vote-btn{width:100%;padding:12px;background:linear-gradient(135deg,#f5c842,#e09000);border:none;border-radius:10px;color:#04080f;font-size:14px;font-weight:900;cursor:pointer;font-family:var(--display);transition:all .2s}
+.submit-vote-btn:disabled{opacity:.4;cursor:not-allowed}
+.voted-badge{text-align:center;padding:10px;background:#22c55e15;border:1px solid #22c55e30;border-radius:10px;color:var(--green);font-size:14px;font-weight:700;font-family:var(--display)}
+
+/* ── FULL DESC ── */
+.full-desc{padding:18px 24px;border-top:1px solid var(--border);background:var(--bg)}
+.full-desc p{font-size:14px;color:var(--text2);line-height:1.75}
+.exec-data{margin-top:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--text3)}
+.exec-label{font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;font-family:var(--sans)}
+.tx-link{display:inline-block;margin-top:8px;font-size:11px;color:var(--blue);font-family:var(--mono)}
+
+/* ── CREATE FORM ── */
+.form-wrap{max-width:720px;margin:0 auto}
+.form-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:36px}
+.form-hd{text-align:center;margin-bottom:32px}
+.form-hd-title{font-family:var(--display);font-size:30px;font-weight:900;color:#f1f8ff;margin-bottom:8px;letter-spacing:-1px}
+.form-hd-sub{font-size:15px;color:var(--text3);font-weight:300}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.fg{margin-bottom:18px}
+.fg label{display:block;font-size:13px;color:var(--text2);margin-bottom:8px;font-family:var(--display);font-weight:600}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;color:#f1f8ff;font-size:14px;outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold)}
+.fg select{cursor:pointer;appearance:none}
+.fg textarea{resize:vertical;font-family:var(--sans)}
+.req{color:var(--red)}
+.form-notice{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;background:#f5c84208;border:1px solid #f5c84220;border-radius:11px;font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.55}
+.category-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.cat-option{padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .15s;text-align:left}
+.cat-option:hover{border-color:var(--border2)}
+.cat-option.selected{border-color:var(--gold);background:#f5c84210}
+.cat-name{font-family:var(--display);font-weight:800;font-size:14px;color:#f1f8ff;margin-bottom:3px}
+.cat-desc{font-size:12px;color:var(--text3)}
+
+/* ── TREASURY ── */
+.treasury-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.treasury-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px}
+.tc-label{font-size:11px;color:var(--text4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.tc-value{font-family:var(--display);font-size:32px;font-weight:900;margin-bottom:4px}
+.tc-sub{font-size:13px;color:var(--text3)}
+
+/* ── MEMBERS ── */
+.members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.member-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:22px;display:flex;align-items:center;gap:16px}
+.member-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.member-addr{font-family:var(--mono);font-size:13px;color:#f1f8ff;margin-bottom:4px}
+.member-power{font-size:12px;color:var(--text3)}
+.power-bar-wrap{margin-top:8px}
+.power-bar{height:3px;background:var(--bg4);border-radius:100px;overflow:hidden}
+.power-fill{height:100%;background:linear-gradient(90deg,var(--gold),#e09000);border-radius:100px}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;top:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:10px}
+.toast{padding:13px 18px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;font-size:13px;color:#f1f8ff;animation:fadeUp .2s ease;min-width:260px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px #00000080;max-width:340px}
+.toast.success{border-color:#22c55e50}
+.toast.error{border-color:#ef444450}
+.toast.info{border-color:#3b82f650}
+
+/* ── SPINNER ── */
+.spin{width:16px;height:16px;border:2px solid #fff3;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+.spin-gold{border-color:#f5c84230;border-top-color:var(--gold)}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:64px 28px;color:var(--text4)}
+.empty-icon{font-size:56px;margin-bottom:16px}
+.empty-text{font-size:16px;color:var(--text3);margin-bottom:20px}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:28px;border-top:1px solid var(--border);font-size:12px;color:var(--text4);display:flex;gap:16px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
+footer a{color:var(--text3)}
+footer a:hover{color:var(--gold)}
+
+/* ── DONUT CHART ── */
+.donut-wrap{display:flex;align-items:center;gap:20px;padding:16px 24px 20px}
+.donut{width:80px;height:80px;flex-shrink:0}
+.donut-legend{display:flex;flex-direction:column;gap:6px}
+.dl-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.dl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dl-label{color:var(--text3)}
+.dl-val{color:#f1f8ff;font-weight:700;margin-left:4px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .stats-strip{grid-template-columns:repeat(3,1fr)}
+  .treasury-grid{grid-template-columns:1fr}
+  .form-grid-2{grid-template-columns:1fr}
+  .category-grid{grid-template-columns:1fr}
+  .header-wrap{padding:12px 16px}
+  .appid-pill{display:none}
+  main{padding:24px 16px}
+}
+</style>
+</head>
+<body>
+<div class="bg-wrap">
+  <div class="bg-noise"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-orb1"></div>
+  <div class="bg-orb2"></div>
+  <div class="bg-line"></div>
+</div>
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-wrap">
+    <div class="logo">
+      <div class="logo-mark">⬡</div>
+      <div>
+        <div class="logo-text">AlgoDAO</div>
+        <div class="logo-sub">Algorand Testnet · App ID: 1234567890</div>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="switchTab('proposals')">📋 Proposals</button>
+      <button class="nav-btn" onclick="switchTab('create')">+ New Proposal</button>
+      <button class="nav-btn" onclick="switchTab('treasury')">🏦 Treasury</button>
+      <button class="nav-btn" onclick="switchTab('members')">👥 Members</button>
+      <button class="nav-btn" onclick="switchTab('about')">ℹ About</button>
+    </nav>
+    <div class="header-right">
+      <div class="appid-pill">
+        <a href="https://testnet.explorer.perawallet.app/application/1234567890" target="_blank">App ID: 1234567890 ↗</a>
+      </div>
+      <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">⬡ Connect Pera</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- PROPOSALS TAB -->
+  <div id="tab-proposals" class="tab">
+    <div class="hero">
+      <div class="hero-eyebrow"><span class="hero-dot"></span>Live on Algorand Testnet · App ID: 1234567890</div>
+      <h1 class="hero-title">Govern Together.</h1>
+      <div class="hero-subtitle">Vote On-Chain.</div>
+      <p class="hero-body">AlgoDAO brings transparent, tamper-proof governance to the Algorand blockchain. Every vote is a signed transaction. Every decision is public and permanent.</p>
+      <div class="hero-ctas">
+        <button class="btn-gold" onclick="switchTab('create')">+ Submit Proposal</button>
+        <button class="btn-outline" onclick="window.open('https://testnet.explorer.perawallet.app/application/1234567890','_blank')">View on Explorer ↗</button>
+      </div>
+    </div>
+
+    <div class="stats-strip" id="statsStrip">
+      <div class="stat-box"><div class="stat-num" style="color:var(--gold)" id="s-proposals">0</div><div class="stat-lbl">Proposals</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--blue)" id="s-active">0</div><div class="stat-lbl">Active</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--green)" id="s-passed">0</div><div class="stat-lbl">Passed</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--purple)" id="s-votes">0</div><div class="stat-lbl">Total Votes</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:var(--text2)" id="s-members">0</div><div class="stat-lbl">Members</div></div>
+    </div>
+
+    <div class="section-bar">
+      <div class="section-title">Governance Proposals</div>
+      <span class="section-count" id="proposalCount">0 proposals</span>
+    </div>
+
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterProposals('ALL',this)">All</button>
+      <button class="filter-btn" onclick="filterProposals('ACTIVE',this)">🟢 Active</button>
+      <button class="filter-btn" onclick="filterProposals('PASSED',this)">✅ Passed</button>
+      <button class="filter-btn" onclick="filterProposals('REJECTED',this)">❌ Rejected</button>
+      <button class="filter-btn" onclick="filterProposals('EXECUTED',this)">⚡ Executed</button>
+      <button class="filter-btn" onclick="filterProposals('TREASURY',this)">🏦 Treasury</button>
+      <button class="filter-btn" onclick="filterProposals('PROTOCOL',this)">🔧 Protocol</button>
+    </div>
+
+    <div class="proposals-grid" id="proposalsGrid">
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Loading proposals...</div></div>
+    </div>
+  </div>
+
+  <!-- CREATE TAB -->
+  <div id="tab-create" class="tab" style="display:none">
+    <div class="form-wrap">
+      <div class="form-hd">
+        <div class="form-hd-title">Submit a Proposal</div>
+        <div class="form-hd-sub">Proposals are recorded on-chain and open for community voting</div>
+      </div>
+      <div id="createSuccess" style="display:none"></div>
+      <div class="form-card" id="createFormCard">
+        <div class="fg">
+          <label>Proposal Title <span class="req">*</span></label>
+          <input id="pTitle" placeholder="e.g. Allocate 500 ALGO for developer grants" maxlength="80"/>
+        </div>
+        <div class="fg">
+          <label>Category <span class="req">*</span></label>
+          <div class="category-grid" id="categoryGrid">
+            <div class="cat-option selected" data-cat="TREASURY" onclick="selectCategory('TREASURY',this)">
+              <div style="font-size:20px;margin-bottom:6px">🏦</div>
+              <div class="cat-name">Treasury</div>
+              <div class="cat-desc">Fund allocation, budget, spending</div>
+            </div>
+            <div class="cat-option" data-cat="PROTOCOL" onclick="selectCategory('PROTOCOL',this)">
+              <div style="font-size:20px;margin-bottom:6px">🔧</div>
+              <div class="cat-name">Protocol</div>
+              <div class="cat-desc">Smart contract upgrades, params</div>
+            </div>
+            <div class="cat-option" data-cat="MEMBERSHIP" onclick="selectCategory('MEMBERSHIP',this)">
+              <div style="font-size:20px;margin-bottom:6px">👥</div>
+              <div class="cat-name">Membership</div>
+              <div class="cat-desc">Roles, access, community rules</div>
+            </div>
+            <div class="cat-option" data-cat="GENERAL" onclick="selectCategory('GENERAL',this)">
+              <div style="font-size:20px;margin-bottom:6px">💡</div>
+              <div class="cat-name">General</div>
+              <div class="cat-desc">Ideas, strategy, partnerships</div>
+            </div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Full Description <span class="req">*</span></label>
+          <textarea id="pDesc" rows="5" placeholder="Describe the proposal in detail. Include rationale, expected outcomes, and any relevant data..."></textarea>
+        </div>
+        <div class="form-grid-2">
+          <div class="fg">
+            <label>Voting Duration (days)</label>
+            <select id="pDuration">
+              <option value="1">1 day</option>
+              <option value="3">3 days</option>
+              <option value="7" selected>7 days (default)</option>
+              <option value="14">14 days</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Quorum Threshold (%)</label>
+            <select id="pQuorum">
+              <option value="5">5% of supply</option>
+              <option value="10" selected>10% (default)</option>
+              <option value="20">20% of supply</option>
+              <option value="33">33% of supply</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Execution Details</label>
+          <input id="pExec" placeholder="What happens if this proposal passes? (e.g. Transfer 500 ALGO to address XXX)"/>
+        </div>
+        <div class="form-notice">
+          <span style="font-size:20px">⚡</span>
+          <span>Submitting a proposal signs <strong>1 Algorand transaction</strong>. You need at least <strong>100 ADAO tokens</strong> to propose. Voting window opens immediately after submission.</span>
+        </div>
+        <button class="btn-gold" id="createBtn" onclick="createProposal()" style="width:100%;padding:15px;font-size:15px">
+          ⬡ Submit Proposal On-Chain
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TREASURY TAB -->
+  <div id="tab-treasury" class="tab" style="display:none">
+    <div class="section-bar" style="margin-bottom:28px">
+      <div class="section-title">DAO Treasury</div>
+    </div>
+    <div class="treasury-grid">
+      <div class="treasury-card">
+        <div class="tc-label">Treasury Balance</div>
+        <div class="tc-value" style="color:var(--gold)">12.45 ALGO</div>
+        <div class="tc-sub">≈ $0.37 USD · App ID 1234567890</div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text4);margin-bottom:10px">TREASURY ADDRESS</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--blue);word-break:break-all">
+            <a href="https://testnet.explorer.perawallet.app/application/1234567890" target="_blank">
+              View on Algorand Explorer ↗
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="treasury-card">
+        <div class="tc-label">Governance Token</div>
+        <div class="tc-value" style="color:var(--purple)">ADAO</div>
+        <div class="tc-sub">10,000,000 total supply</div>
+        <div style="margin-top:20px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--text3)">Circulating</span>
+            <span style="font-size:13px;color:#f1f8ff">7,500,000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--text3)">Reserved</span>
+            <span style="font-size:13px;color:#f1f8ff">2,500,000</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:13px;color:var(--text3)">Min to Propose</span>
+            <span style="font-size:13px;color:var(--gold)">100 ADAO</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-bar"><div class="section-title">Recent Transactions</div></div>
+    <div id="treasuryTxList"></div>
+
+    <div style="margin-top:32px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px">
+      <div style="font-family:var(--display);font-size:18px;font-weight:800;margin-bottom:8px">Fund Treasury</div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:20px">Donate ALGO to support the DAO's initiatives and proposals</div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <input id="depositAmt" type="number" class="fg" placeholder="Amount in ALGO" style="width:auto;flex:1;padding:12px 16px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:#f1f8ff;font-size:14px;outline:none"/>
+        <button class="btn-gold" onclick="depositToTreasury()" style="padding:12px 24px;white-space:nowrap">Deposit to DAO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMBERS TAB -->
+  <div id="tab-members" class="tab" style="display:none">
+    <div class="section-bar">
+      <div class="section-title">DAO Members</div>
+      <span class="section-count" id="memberCount">0 members</span>
+    </div>
+    <div class="members-grid" id="membersGrid"></div>
+  </div>
+
+  <!-- ABOUT TAB -->
+  <div id="tab-about" class="tab" style="display:none">
+    <div style="max-width:760px;margin:0 auto">
+      <div style="text-align:center;padding:40px 0 48px">
+        <div style="font-size:52px;margin-bottom:16px">⬡</div>
+        <h2 style="font-family:var(--display);font-size:36px;font-weight:900;color:#f1f8ff;margin-bottom:12px;letter-spacing:-1px">About AlgoDAO</h2>
+        <p style="font-size:16px;color:var(--text3);line-height:1.75;font-weight:300">Fully decentralized on-chain governance built for the Algorand ecosystem</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        ${[
+          ['🏛 What is AlgoDAO?','AlgoDAO is a decentralized autonomous organization governance system built on Algorand. Every proposal, vote, and execution is recorded permanently on the Algorand blockchain — transparent, immutable, and verifiable by anyone.'],
+          ['⚡ How Voting Works','Each ADAO governance token = 1 unit of voting power. When you vote FOR, AGAINST, or ABSTAIN on a proposal, you sign an Algorand transaction. Your vote weight equals your token balance. One address can only vote once per proposal (enforced by smart contract).'],
+          ['📋 Proposal Lifecycle','Proposals go through: ACTIVE (voting open) → PASSED/REJECTED (after voting period) → EXECUTED (after council execution). A proposal passes if it meets quorum (10% of total token supply) and has more FOR than AGAINST votes.'],
+          ['🏦 Treasury','The DAO treasury is the smart contract account itself. All ALGO deposited goes directly to the contract address. Treasury allocation proposals allow the community to vote on spending.'],
+          ['🔧 Tech Stack','Smart Contract: Algorand Python (Puya) via AlgoKit 2.x | Frontend: Vanilla JS + HTML | Wallet: Pera Wallet via @txnlab/use-wallet | Network: Algorand Testnet | App ID: 1234567890'],
+        ].map(([t,d])=>`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+          <div style="font-family:var(--display);font-size:16px;font-weight:800;color:#f1f8ff;margin-bottom:8px">${t}</div>
+          <div style="font-size:14px;color:var(--text3);line-height:1.7">${d}</div>
+        </div>`).join('')}
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+          <div style="font-family:var(--display);font-size:16px;font-weight:800;color:#f1f8ff;margin-bottom:16px">🔗 Contract Links</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <a href="https://testnet.explorer.perawallet.app/application/1234567890" target="_blank" style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--blue);font-family:var(--mono);font-size:12px">
+              <span>Pera Explorer</span><span>App ID: 1234567890 ↗</span>
+            </a>
+            <a href="https://testnet.algoexplorer.io/application/1234567890" target="_blank" style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--blue);font-family:var(--mono);font-size:12px">
+              <span>AlgoExplorer</span><span>Application: 1234567890 ↗</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>AlgoDAO · RIFT 2026 · Web3 / Blockchain Open Innovation</span>
+  <span style="color:var(--border2)">·</span>
+  <a href="https://developer.algorand.org/algokit/" target="_blank">AlgoKit Docs ↗</a>
+  <span style="color:var(--border2)">·</span>
+  <a href="https://testnet.explorer.perawallet.app/application/1234567890" target="_blank">Testnet Explorer ↗</a>
+  <span style="color:var(--border2)">·</span>
+  <a href="https://www.linkedin.com/company/rift-pwioi/" target="_blank">RIFT LinkedIn ↗</a>
+</footer>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+const APP_ID = 1234567890;
+const NETWORK = 'testnet';
+
+let walletAddress = null;
+let selectedCategory = 'TREASURY';
+let proposals = [];
+let activeFilter = 'ALL';
+let expandedId = null;
+let selectedVotes = {}; // proposalId → 'FOR'|'AGAINST'|'ABSTAIN'
+let castVotes = {};     // proposalId → true (already voted)
+
+// ── Demo Proposals ────────────────────────────────────────────
+function seedProposals() {
+  const now = Date.now();
+  proposals = [
+    {
+      id:1, title:'Allocate 500 ALGO for Developer Grants Q1 2026',
+      description:'This proposal allocates 500 ALGO from the DAO treasury to fund 5 developer grants for building tools and integrations on the AlgoDAO platform. Each grant recipient will build an open-source tool that benefits the community. Deliverables include: SDK wrapper, documentation site, analytics dashboard, mobile wallet integration, and REST API bridge.',
+      category:'TREASURY', proposer:'ALGO3K7FMRPQXYZ...', status:'ACTIVE',
+      votesFor:4500, votesAgainst:1200, votesAbstain:300, totalVoters:42,
+      votingStart:now-2*86400000, votingEnd:now+5*86400000,
+      executionData:'Transfer 500 ALGO to multi-sig wallet: ALGO5XYZ... (5 equal parts of 100 ALGO)',
+      txId:'A1B2C3ALGODAOTX',
+    },
+    {
+      id:2, title:'Upgrade Voting Contract to v2 — Add Snapshot Voting',
+      description:'Proposal to upgrade the AlgoDAO smart contract to version 2.0, introducing snapshot-based voting. Instead of current live balance, votes will be weighted by token balance at a specific snapshot block. This prevents vote manipulation via last-minute token purchases and ensures fairer governance.',
+      category:'PROTOCOL', proposer:'ALGO9PQRSTUVWX...', status:'ACTIVE',
+      votesFor:7800, votesAgainst:450, votesAbstain:150, totalVoters:67,
+      votingStart:now-1*86400000, votingEnd:now+6*86400000,
+      executionData:'Deploy new contract at address TBD. Migrate global state. Update frontend config.',
+      txId:'B2C3D4ALGODAOTX',
+    },
+    {
+      id:3, title:'Add 3 New Council Members for Q1 2026',
+      description:'This proposal adds three new council members to the AlgoDAO multi-sig council. Council members can execute passed proposals and manage emergency actions. Nominees: @alice.algo (core developer, 2yr Algorand), @bob.algo (DAO governance expert), @carol.algo (DeFi researcher).',
+      category:'MEMBERSHIP', proposer:'ALGODEFJKLMNOP...', status:'PASSED',
+      votesFor:9200, votesAgainst:800, votesAbstain:200, totalVoters:89,
+      votingStart:now-10*86400000, votingEnd:now-3*86400000,
+      executionData:'Add alice.algo, bob.algo, carol.algo to multi-sig council. Update contract config.',
+      txId:'C3D4E5ALGODAOTX',
+    },
+    {
+      id:4, title:'Partner with AlgoFi for Liquidity Mining Program',
+      description:'Strategic partnership proposal with AlgoFi to launch a joint liquidity mining program. ADAO token holders who provide liquidity on AlgoFi will earn bonus ADAO rewards. Budget: 100,000 ADAO tokens over 90 days. Expected to increase ADAO liquidity by 300% and attract 200+ new DAO members.',
+      category:'GENERAL', proposer:'ALGOXYZABC123...', status:'REJECTED',
+      votesFor:2100, votesAgainst:6400, votesAbstain:800, totalVoters:56,
+      votingStart:now-15*86400000, votingEnd:now-8*86400000,
+      executionData:'Deploy liquidity mining contract and fund with 100,000 ADAO tokens.',
+      txId:'D4E5F6ALGODAOTX',
+    },
+    {
+      id:5, title:'Launch AlgoDAO Mobile App — Community Fund',
+      description:'Proposal to fund development of the official AlgoDAO mobile app (iOS + Android). The app will enable proposal browsing, voting, and treasury monitoring on-the-go via Pera Wallet integration. Requested budget: 1,000 ALGO from treasury. Timeline: 90 days.',
+      category:'TREASURY', proposer:'ALGO1RSTU34567...', status:'EXECUTED',
+      votesFor:8900, votesAgainst:500, votesAbstain:300, totalVoters:73,
+      votingStart:now-25*86400000, votingEnd:now-18*86400000,
+      executionData:'Transfer 1000 ALGO to dev team address ALGO8DEV... in 3 milestones.',
+      txId:'E5F6G7ALGODAOTX',
+    },
+  ];
+  updateStats();
+  renderProposals();
+  renderMembers();
+  renderTreasuryTxList();
+}
+
+// ════════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════════
+function switchTab(name) {
+  ['proposals','create','treasury','members','about'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t===name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach((btn,i) => {
+    btn.classList.toggle('active', ['proposals','create','treasury','members','about'][i]===name);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// WALLET
+// ════════════════════════════════════════════════════════════
+function connectWallet() {
+  if (walletAddress) {
+    walletAddress = null;
+    const btn = document.getElementById('walletBtn');
+    btn.textContent = '⬡ Connect Pera';
+    btn.classList.remove('connected');
+    toast('Wallet disconnected', 'info');
+    renderProposals();
+    return;
+  }
+  // Simulate Pera Wallet — replace with @txnlab/use-wallet in React version
+  walletAddress = 'ALGO' + Math.random().toString(36).substr(2,8).toUpperCase() + 'TESTNET';
+  const btn = document.getElementById('walletBtn');
+  btn.textContent = `◉ ${walletAddress.slice(0,10)}...`;
+  btn.classList.add('connected');
+  toast('Pera Wallet connected! (Demo mode)', 'success');
+  renderProposals();
+}
+
+// ════════════════════════════════════════════════════════════
+// STATS
+// ════════════════════════════════════════════════════════════
+function updateStats() {
+  const active = proposals.filter(p=>p.status==='ACTIVE').length;
+  const passed = proposals.filter(p=>p.status==='PASSED'||p.status==='EXECUTED').length;
+  const totalVotes = proposals.reduce((acc,p)=>acc+p.totalVoters,0);
+  animNum('s-proposals', proposals.length);
+  animNum('s-active', active);
+  animNum('s-passed', passed);
+  animNum('s-votes', totalVotes);
+  animNum('s-members', 89);
+  document.getElementById('proposalCount').textContent = `${proposals.length} proposals`;
+}
+
+function animNum(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let start = 0;
+  const step = target / 30;
+  const timer = setInterval(()=>{
+    start = Math.min(start + step, target);
+    el.textContent = Math.floor(start);
+    if (start >= target) clearInterval(timer);
+  }, 30);
+}
+
+// ════════════════════════════════════════════════════════════
+// PROPOSALS
+// ════════════════════════════════════════════════════════════
+function filterProposals(filter, btn) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProposals();
+}
+
+function getFilteredProposals() {
+  if (['TREASURY','PROTOCOL','MEMBERSHIP','GENERAL'].includes(activeFilter)) {
+    return proposals.filter(p=>p.category===activeFilter);
+  }
+  if (activeFilter === 'ALL') return proposals;
+  return proposals.filter(p=>p.status===activeFilter);
+}
+
+function renderProposals() {
+  const grid = document.getElementById('proposalsGrid');
+  const filtered = getFilteredProposals();
+  if (!filtered.length) {
+    grid.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No proposals match this filter</div></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(p => renderProposalCard(p)).join('');
+}
+
+function renderProposalCard(p) {
+  const total = p.votesFor + p.votesAgainst + p.votesAbstain || 1;
+  const forPct = Math.round(p.votesFor/total*100);
+  const agPct = Math.round(p.votesAgainst/total*100);
+  const abPct = 100-forPct-agPct;
+  const timeStr = p.status==='ACTIVE' ? timeLeft(p.votingEnd) : statusLabel(p.status);
+  const isExpanded = expandedId===p.id;
+  const alreadyVoted = !!castVotes[p.id];
+  const catColors = {TREASURY:'tag-treasury',PROTOCOL:'tag-protocol',MEMBERSHIP:'tag-membership',GENERAL:'tag-general'};
+  const statusCls = {ACTIVE:'s-active',PASSED:'s-passed',REJECTED:'s-rejected',EXECUTED:'s-executed',PENDING:'s-pending'}[p.status]||'s-pending';
+
+  return `
+  <div class="proposal-card ${isExpanded?'expanded':''}" id="pc-${p.id}">
+    <div class="p-header" onclick="toggleExpand(${p.id})">
+      <div class="p-num">#${String(p.id).padStart(3,'0')}</div>
+      <div class="p-content">
+        <div class="p-title">${p.title}</div>
+        <div class="p-desc">${p.description}</div>
+        <div class="p-meta">
+          <span class="p-tag ${catColors[p.category]||'tag-general'}">${p.category}</span>
+          <span class="status-pill ${statusCls}">${p.status}</span>
+          <span style="font-size:12px;color:var(--text4)">👥 ${p.totalVoters} voters</span>
+          <span style="font-size:12px;color:var(--text4)">📍 ${shortAddr(p.proposer)}</span>
+        </div>
+      </div>
+      <div class="p-right">
+        <span class="time-left">${timeStr}</span>
+        <div style="font-size:20px">${isExpanded?'▲':'▼'}</div>
+      </div>
+    </div>
+
+    <div class="vote-bar-wrap">
+      ${renderDonut(p)}
+      <div class="vote-bar">
+        <div class="vb-for" style="width:${forPct}%"></div>
+        <div class="vb-against" style="width:${agPct}%"></div>
+        <div class="vb-abstain" style="width:${abPct}%"></div>
+      </div>
+      <div class="vote-nums">
+        <span class="vn-for">✓ FOR ${p.votesFor.toLocaleString()} (${forPct}%)</span>
+        <span class="vn-abstain">◌ ABSTAIN ${p.votesAbstain.toLocaleString()}</span>
+        <span class="vn-against">✕ AGAINST ${p.votesAgainst.toLocaleString()} (${agPct}%)</span>
+      </div>
+    </div>
+
+    ${isExpanded ? `
+    <div class="full-desc">
+      <p>${p.description}</p>
+      <div style="margin-top:16px">
+        <div class="exec-label">Execution Details</div>
+        <div class="exec-data">${p.executionData || 'No execution data specified'}</div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text4)">Proposer: <span style="color:var(--blue);font-family:var(--mono)">${shortAddr(p.proposer)}</span></div>
+        <div style="font-size:12px;color:var(--text4)">Start: <span style="color:var(--text2)">${formatDate(p.votingStart)}</span></div>
+        <div style="font-size:12px;color:var(--text4)">End: <span style="color:var(--text2)">${formatDate(p.votingEnd)}</span></div>
+      </div>
+      ${p.txId?`<a class="tx-link" href="https://testnet.explorer.perawallet.app/tx/${p.txId}" target="_blank">View on Algorand Explorer: ${p.txId} ↗</a>`:''}
+    </div>
+
+    ${p.status==='ACTIVE' ? `
+    <div class="vote-panel">
+      <div class="vote-panel-title">Cast Your Vote</div>
+      ${alreadyVoted ? `
+        <div class="voted-badge">✅ You voted ${castVotes[p.id]} on this proposal — recorded on-chain</div>
+      ` : !walletAddress ? `
+        <div style="text-align:center;padding:16px;color:var(--text3);font-size:14px">
+          Connect your Pera Wallet to vote on this proposal
+          <br/><button class="btn-gold" onclick="connectWallet()" style="margin-top:12px;padding:10px 24px">Connect Wallet</button>
+        </div>
+      ` : `
+        <div class="vote-choices">
+          <button class="vote-btn vb-for-btn ${selectedVotes[p.id]==='FOR'?'selected':''}" onclick="selectVote(${p.id},'FOR')">✓ FOR</button>
+          <button class="vote-btn vb-against-btn ${selectedVotes[p.id]==='AGAINST'?'selected':''}" onclick="selectVote(${p.id},'AGAINST')">✕ AGAINST</button>
+          <button class="vote-btn vb-abstain-btn ${selectedVotes[p.id]==='ABSTAIN'?'selected':''}" onclick="selectVote(${p.id},'ABSTAIN')">◌ ABSTAIN</button>
+        </div>
+        <button class="submit-vote-btn" onclick="submitVote(${p.id})" ${!selectedVotes[p.id]?'disabled':''}>
+          ⬡ Submit Vote On-Chain
+        </button>
+      `}
+    </div>` : ''}
+    ` : ''}
+  </div>`;
+}
+
+function renderDonut(p) {
+  const total = p.votesFor + p.votesAgainst + p.votesAbstain || 1;
+  const fPct = p.votesFor/total;
+  const aPct = p.votesAgainst/total;
+  const r=28, c=Math.PI*2*r, gap=1;
+  const fLen = c*fPct-gap, aLen = c*aPct-gap, bLen = c*(1-fPct-aPct)-gap;
+  const fOff = 0, aOff = -(c*fPct), bOff = -(c*fPct+c*aPct);
+  return `<div class="donut-wrap">
+    <svg class="donut" viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="${r}" fill="none" stroke="#111f36" stroke-width="10"/>
+      ${fLen>0?`<circle cx="40" cy="40" r="${r}" fill="none" stroke="#22c55e" stroke-width="10" stroke-dasharray="${fLen} ${c-fLen}" stroke-dashoffset="${fOff}" transform="rotate(-90 40 40)"/>`:''}
+      ${aLen>0?`<circle cx="40" cy="40" r="${r}" fill="none" stroke="#ef4444" stroke-width="10" stroke-dasharray="${aLen} ${c-aLen}" stroke-dashoffset="${aOff}" transform="rotate(-90 40 40)"/>`:''}
+      ${bLen>0?`<circle cx="40" cy="40" r="${r}" fill="none" stroke="#64748b" stroke-width="10" stroke-dasharray="${bLen} ${c-bLen}" stroke-dashoffset="${bOff}" transform="rotate(-90 40 40)"/>`:''}
+      <text x="40" y="44" text-anchor="middle" fill="#f1f8ff" font-size="11" font-family="Cabinet Grotesk" font-weight="700">${Math.round(fPct*100)}%</text>
+    </svg>
+    <div class="donut-legend">
+      <div class="dl-row"><div class="dl-dot" style="background:#22c55e"></div><span class="dl-label">For</span><span class="dl-val">${p.votesFor.toLocaleString()}</span></div>
+      <div class="dl-row"><div class="dl-dot" style="background:#ef4444"></div><span class="dl-label">Against</span><span class="dl-val">${p.votesAgainst.toLocaleString()}</span></div>
+      <div class="dl-row"><div class="dl-dot" style="background:#64748b"></div><span class="dl-label">Abstain</span><span class="dl-val">${p.votesAbstain.toLocaleString()}</span></div>
+    </div>
+  </div>`;
+}
+
+function toggleExpand(id) {
+  expandedId = expandedId===id ? null : id;
+  renderProposals();
+}
+
+function selectVote(proposalId, choice) {
+  selectedVotes[proposalId] = choice;
+  renderProposals();
+}
+
+async function submitVote(proposalId) {
+  if (!walletAddress) { toast('Connect wallet first','error'); return; }
+  if (!selectedVotes[proposalId]) { toast('Select a vote option','error'); return; }
+  const choice = selectedVotes[proposalId];
+  toast('Signing transaction in Pera Wallet...','info');
+  await sleep(1800);
+  // Simulate Algorand transaction
+  const p = proposals.find(x=>x.id===proposalId);
+  if (!p) return;
+  const weight = 1500; // Mock token balance
+  if (choice==='FOR') { p.votesFor+=weight; }
+  else if (choice==='AGAINST') { p.votesAgainst+=weight; }
+  else { p.votesAbstain+=weight; }
+  p.totalVoters++;
+  castVotes[proposalId] = choice;
+  updateStats();
+  renderProposals();
+  toast(`✅ Vote "${choice}" recorded on Algorand Testnet! Weight: ${weight} ADAO`, 'success');
+}
+
+// ════════════════════════════════════════════════════════════
+// CREATE PROPOSAL
+// ════════════════════════════════════════════════════════════
+function selectCategory(cat, el) {
+  selectedCategory = cat;
+  document.querySelectorAll('.cat-option').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function createProposal() {
+  const title = document.getElementById('pTitle').value.trim();
+  const desc = document.getElementById('pDesc').value.trim();
+  const exec = document.getElementById('pExec').value.trim();
+  const duration = parseInt(document.getElementById('pDuration').value);
+  const quorum = parseInt(document.getElementById('pQuorum').value);
+
+  if (!title) { toast('Proposal title is required','error'); return; }
+  if (!desc || desc.length < 30) { toast('Description must be at least 30 characters','error'); return; }
+  if (!walletAddress) { toast('Connect your Pera Wallet first','error'); connectWallet(); return; }
+
+  const btn = document.getElementById('createBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin spin-gold" style="margin-right:10px"></span>Signing & submitting...';
+
+  await sleep(2200);
+
+  const newId = proposals.length + 1;
+  const now = Date.now();
+  const newProposal = {
+    id: newId,
+    title,
+    description: desc,
+    category: selectedCategory,
+    proposer: walletAddress,
+    status: 'ACTIVE',
+    votesFor: 0, votesAgainst: 0, votesAbstain: 0, totalVoters: 0,
+    votingStart: now,
+    votingEnd: now + duration*86400000,
+    executionData: exec || 'To be determined after proposal passes',
+    txId: Math.random().toString(36).substr(2,10).toUpperCase()+'ALGOTX',
+  };
+  proposals.unshift(newProposal);
+  updateStats();
+
+  // Show success
+  const successDiv = document.getElementById('createSuccess');
+  const formCard = document.getElementById('createFormCard');
+  formCard.style.display='none';
+  successDiv.style.display='block';
+  successDiv.innerHTML=`
+    <div style="text-align:center;background:var(--bg2);border:1px solid #22c55e40;border-radius:20px;padding:40px;margin-bottom:20px">
+      <div style="font-size:56px;margin-bottom:20px">✅</div>
+      <h2 style="font-family:var(--display);font-size:28px;font-weight:900;color:#f1f8ff;margin-bottom:8px">Proposal Submitted!</h2>
+      <p style="color:var(--text3);margin-bottom:24px">Your proposal is now live on the Algorand blockchain and open for voting.</p>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:left;margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span style="color:var(--text3)">Proposal ID</span><span style="color:var(--gold);font-family:var(--mono)">#${String(newId).padStart(3,'0')}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span style="color:var(--text3)">Status</span><span style="color:var(--green)">🟢 ACTIVE</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span style="color:var(--text3)">Voting Period</span><span style="color:#f1f8ff">${duration} days</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px">
+          <span style="color:var(--text3)">Tx ID</span>
+          <a href="https://testnet.explorer.perawallet.app/tx/${newProposal.txId}" target="_blank" style="color:var(--blue);font-family:var(--mono);font-size:11px">${newProposal.txId} ↗</a>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button class="btn-gold" onclick="switchTab('proposals')">View All Proposals</button>
+        <button class="btn-outline" onclick="resetCreateForm()">Submit Another</button>
+      </div>
+    </div>`;
+
+  toast(`Proposal #${String(newId).padStart(3,'0')} submitted on Algorand Testnet!`, 'success');
+  btn.disabled=false; btn.innerHTML='⬡ Submit Proposal On-Chain';
+}
+
+function resetCreateForm() {
+  document.getElementById('createSuccess').style.display='none';
+  document.getElementById('createFormCard').style.display='block';
+  document.getElementById('pTitle').value='';
+  document.getElementById('pDesc').value='';
+  document.getElementById('pExec').value='';
+}
+
+// ════════════════════════════════════════════════════════════
+// TREASURY
+// ════════════════════════════════════════════════════════════
+function renderTreasuryTxList() {
+  const el = document.getElementById('treasuryTxList');
+  const txs = [
+    {type:'DEPOSIT',amount:'+5.00 ALGO',addr:'ALGO3K7F...',time:'2 days ago',tx:'TX001ALGO'},
+    {type:'DEPOSIT',amount:'+7.45 ALGO',addr:'ALGO9PQR...',time:'5 days ago',tx:'TX002ALGO'},
+    {type:'PAYOUT',amount:'-10.00 ALGO',addr:'ALGO1RST...',time:'12 days ago',tx:'TX003ALGO'},
+    {type:'DEPOSIT',amount:'+10.00 ALGO',addr:'ALGO2DEF...',time:'18 days ago',tx:'TX004ALGO'},
+  ];
+  el.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+    ${txs.map(tx=>`
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;border-radius:10px;background:${tx.type==='DEPOSIT'?'#22c55e15':'#ef444415'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${tx.type==='DEPOSIT'?'↓':'↑'}</div>
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:14px;font-weight:700;color:#f1f8ff">${tx.type}</div>
+        <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">${tx.addr}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--display);font-weight:800;color:${tx.type==='DEPOSIT'?'var(--green)':'var(--red)'}">${tx.amount}</div>
+        <div style="font-size:11px;color:var(--text4)">${tx.time}</div>
+      </div>
+      <a href="https://testnet.explorer.perawallet.app/tx/${tx.tx}" target="_blank" style="color:var(--blue);font-size:12px;font-family:var(--mono)">↗</a>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function depositToTreasury() {
+  const amt = parseFloat(document.getElementById('depositAmt').value);
+  if (!amt || amt<=0) { toast('Enter a valid ALGO amount','error'); return; }
+  if (!walletAddress) { toast('Connect wallet first','error'); return; }
+  toast(`Signing deposit of ${amt} ALGO...`,'info');
+  await sleep(1500);
+  toast(`✅ ${amt} ALGO deposited to DAO treasury on-chain!`,'success');
+  document.getElementById('depositAmt').value='';
+}
+
+// ════════════════════════════════════════════════════════════
+// MEMBERS
+// ════════════════════════════════════════════════════════════
+function renderMembers() {
+  const grid = document.getElementById('membersGrid');
+  const avatars=['🧙','👩‍💻','🦊','🐉','🌙','⚡','🔮','🏛','🦋','🌊','🔬','🎯'];
+  const members = [
+    {addr:'ALGO3K7FMRPQ...', tokens:15000, votes:23, role:'Council'},
+    {addr:'ALGO9PQRSTUV...', tokens:8500, votes:18, role:'Member'},
+    {addr:'ALGODEF12345...', tokens:6200, votes:15, role:'Member'},
+    {addr:'ALGOXYZABC9...', tokens:4800, votes:12, role:'Member'},
+    {addr:'ALGO1RSTU123...', tokens:3100, votes:9, role:'Observer'},
+    {addr:'ALGO2ABCDEF...', tokens:2500, votes:7, role:'Observer'},
+    {addr:'ALGO5GHIJKL...', tokens:1800, votes:5, role:'Observer'},
+    {addr:'ALGO8MNOPQR...', tokens:1200, votes:3, role:'Observer'},
+  ];
+  document.getElementById('memberCount').textContent = `${members.length} members`;
+  const maxTokens = members[0].tokens;
+  grid.innerHTML = members.map((m,i)=>`
+    <div class="member-card">
+      <div class="member-avatar" style="background:${['#f5c84218','#3b82f618','#22c55e18','#a855f718'][i%4]}">${avatars[i%avatars.length]}</div>
+      <div style="flex:1;min-width:0">
+        <div class="member-addr">${m.addr}</div>
+        <div class="member-power">${m.tokens.toLocaleString()} ADAO · ${m.role}</div>
+        <div class="power-bar-wrap">
+          <div class="power-bar" style="margin-top:6px"><div class="power-fill" style="width:${m.tokens/maxTokens*100}%"></div></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════════════
+function toast(msg, type='success') {
+  const wrap = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = {success:'✅',error:'❌',info:'ℹ️'};
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
+}
+
+function timeLeft(endTs) {
+  const diff = endTs - Date.now();
+  if (diff<=0) return 'Voting ended';
+  const d=Math.floor(diff/86400000);
+  const h=Math.floor((diff%86400000)/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  if(d>0) return `${d}d ${h}h left`;
+  if(h>0) return `${h}h ${m}m left`;
+  return `${m}m left`;
+}
+
+function statusLabel(s) {
+  return {PASSED:'✅ Passed',REJECTED:'❌ Rejected',EXECUTED:'⚡ Executed',PENDING:'⏳ Pending'}[s]||s;
+}
+
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function shortAddr(addr) {
+  if(!addr) return '';
+  return addr.slice(0,10)+'...';
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+seedProposals();
+</script>
+</body>
+</html>
