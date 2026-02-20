@@ -13,7 +13,7 @@
 
 | Resource | URL |
 |---|---|
-| **Live Application** | https://algodao.vercel.app *(update after deploy)* |
+| **Live Application** |https://thealgoproject.vercel.app/ |
 | **LinkedIn Demo Video** |https://www.linkedin.com/posts/ayush-rastogi-1b506b36a_httpslnkdingzama7jt-project-to-build-activity-7430437007010705409-0EpR?utm_source=share&utm_medium=member_desktop&rcm=ACoAAFt9UVkBUr3WKzN3FdNnoEazBZ-lqVT7mn8 |
 | **GitHub Repository** | https://github.com/THECODEX009/Thealgoproject |
 | **App ID (Testnet)** | `1234567890` |
